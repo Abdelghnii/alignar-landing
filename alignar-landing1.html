@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlignAR – Précision en Tout Point</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Outfit:wght@300;400;600&family=Inconsolata:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Palette extraite du logo AlignAR */
+            --deep-navy: #050c18;    /* Fond principal */
+            --mid-navy: #0a1628;     /* Cartes et sections */
+            --blue-cobalt: #2e7fc1;  /* Accent technique */
+            --cyan-glow: #00d4ff;    /* Actions et interactivité */
+            --white-sky: #e8f0f8;    /* Texte */
+            --line-alpha: rgba(46, 127, 193, 0.2);
+            --font-title: 'Barlow Condensed', sans-serif;
+            --font-body: 'Outfit', sans-serif;
+            --font-tech: 'Inconsolata', monospace;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--deep-navy);
+            color: var(--white-sky);
+            font-family: var(--font-body);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* --- MNT TIN BACKGROUND (TIN Triangulation) --- */
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.45;
+        }
+
+        .grid-overlay {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(var(--line-alpha) 1px, transparent 1px), 
+                linear-gradient(90deg, var(--line-alpha) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        /* --- NAVIGATION --- */
+        nav {
+            position: fixed;
+            top: 0; width: 100%;
+            height: 90px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 5%;
+            z-index: 100;
+            background: rgba(5, 12, 24, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--line-alpha);
+        }
+
+        .logo-link { display: flex; align-items: center; text-decoration: none; }
+        .logo-link img { height: 55px; width: auto; }
+
+        .nav-links { display: flex; gap: 35px; list-style: none; }
+        .nav-links a {
+            text-decoration: none;
+            color: var(--white-sky);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: var(--transition);
+            opacity: 0.7;
+        }
+        .nav-links a:hover { color: var(--cyan-glow); opacity: 1; }
+
+        /* --- HERO --- */
+        .hero {
+            position: relative;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            padding: 0 5%;
+        }
+
+        .hero label {
+            font-family: var(--font-tech);
+            color: var(--cyan-glow);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 25px;
+            display: block;
+        }
+
+        .hero h1 {
+            font-family: var(--font-title);
+            font-size: clamp(40px, 9vw, 110px);
+            line-height: 0.9;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        .hero h1 span { color: var(--blue-cobalt); }
+
+        .hero p {
+            font-size: clamp(16px, 1.8vw, 22px);
+            max-width: 850px;
+            color: var(--white-sky);
+            opacity: 0.8;
+            margin-bottom: 50px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 18px 45px;
+            font-family: var(--font-title);
+            font-size: 18px;
+            text-transform: uppercase;
+            text-decoration: none;
+            border-radius: 2px;
+            transition: var(--transition);
+            cursor: pointer;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .btn-primary { 
+            background: var(--blue-cobalt); 
+            color: white; 
+            border: 1px solid var(--cyan-glow); 
+        }
+        .btn-primary:hover { 
+            background: var(--cyan-glow); 
+            color: var(--deep-navy);
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-outline { 
+            border: 1px solid var(--white-sky); 
+            color: var(--white-sky); 
+            margin-left: 20px; 
+        }
+        .btn-outline:hover { border-color: var(--cyan-glow); color: var(--cyan-glow); }
+
+        /* --- STATS --- */
+        .stats {
+            position: relative;
+            z-index: 10;
+            background: var(--mid-navy);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            border-top: 1px solid var(--line-alpha);
+            border-bottom: 1px solid var(--line-alpha);
+        }
+
+        .stat-card {
+            padding: 60px 20px;
+            text-align: center;
+            border-right: 1px solid var(--line-alpha);
+        }
+
+        .stat-card h2 {
+            font-family: var(--font-title);
+            font-size: 56px;
+            color: var(--cyan-glow);
+            margin-bottom: 10px;
+        }
+
+        .stat-card p {
+            font-family: var(--font-tech);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
+
+        /* --- SERVICES GRID --- */
+        .services {
+            position: relative;
+            z-index: 10;
+            padding: 120px 5%;
+        }
+
+        .section-header { margin-bottom: 80px; }
+        .section-header label { 
+            font-family: var(--font-tech); 
+            color: var(--cyan-glow); 
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2px;
+            background: var(--line-alpha);
+        }
+
+        .service-card {
+            background: var(--deep-navy);
+            padding: 70px 45px;
+            transition: var(--transition);
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .service-card:hover { background: #0c1b33; transform: translateY(-5px); }
+
+        .service-card::after {
+            content: "";
+            position: absolute;
+            bottom: 0; left: 0; width: 0; height: 3px;
+            background: var(--cyan-glow);
+            transition: width 0.4s ease;
+        }
+        .service-card:hover::after { width: 100%; }
+
+        .service-card h3 { 
+            font-family: var(--font-title); 
+            font-size: 26px; 
+            margin-bottom: 20px; 
+            text-transform: uppercase; 
+            color: var(--blue-cobalt);
+        }
+        .service-card p { opacity: 0.7; font-size: 16px; font-weight: 300; }
+
+        /* --- FOOTER --- */
+        footer {
+            padding: 80px 5%;
+            background: #02060c;
+            position: relative;
+            z-index: 10;
+            border-top: 1px solid var(--line-alpha);
+            text-align: center;
+        }
+
+        .footer-logo { height: 45px; margin-bottom: 20px; }
+        .copy { font-family: var(--font-tech); font-size: 12px; opacity: 0.4; margin-top: 20px; }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero h1 { font-size: 55px; }
+            .hero-actions { display: flex; flex-direction: column; width: 100%; gap: 15px; }
+            .btn-outline { margin-left: 0; }
+            .stats { grid-template-columns: 1fr; }
+            .stat-card { border-right: none; border-bottom: 1px solid var(--line-alpha); }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+    <div class="grid-overlay"></div>
+
+    <nav>
+        <a href="#" class="logo-link">
+            <img src="Logo_AlignAR.png" alt="AlignAR">
+        </a>
+        <ul class="nav-links">
+            <li><a href="#services">Services</a></li>
+            <li><a href="#techno">Technologie</a></li>
+            <li><a href="#projets">Réalisations</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <label>Topographie & Ingénierie Numérique</label>
+        <h1>Du terrain au numérique,<br>avec une <span>Précision Absolue</span></h1>
+        <p>Expertise en levés drone, scan 3D et suivi de chantier automatisé. Nous transformons la donnée spatiale en outils de décision rigoureux pour vos infrastructures.</p>
+        <div class="hero-actions">
+            <a href="#services" class="btn btn-primary">Explorer nos services</a>
+            <a href="#contact" class="btn btn-outline">Parler à un expert</a>
+        </div>
+    </section>
+
+    <section class="stats">
+        <div class="stat-card">
+            <h2>+50</h2>
+            <p>Projets livrés</p>
+        </div>
+        <div class="stat-card">
+            <h2>&lt;2 cm</h2>
+            <p>Précision terrain</p>
+        </div>
+        <div class="stat-card">
+            <h2>100%</h2>
+            <p>Digitalisé</p>
+        </div>
+        <div class="stat-card">
+            <h2>3</h2>
+            <p>Pôles technologiques</p>
+        </div>
+    </section>
+
+    <section id="services" class="services">
+        <div class="section-header">
+            <label>Expertise Technique</label>
+            <h2 style="font-family: var(--font-title); font-size: 48px; text-transform: uppercase;">Architecture de Données</h2>
+        </div>
+        <div class="services-grid">
+            <div class="service-card">
+                <h3>Suivi & Contrôle de Chantiers</h3>
+                <p>Analyse de conformité géométrique en temps réel et monitoring d'avancement assisté par IA.</p>
+            </div>
+            <div class="service-card">
+                <h3>Terrassement & MNT</h3>
+                <p>Calculs de cubatures millimétrés et génération de Modèles Numériques de Terrain haute définition.</p>
+            </div>
+            <div class="service-card">
+                <h3>Application Web AlignAR</h3>
+                <p>Plateforme Cloud pour la gestion de vos fiches de réception et rapports topographiques automatisés.</p>
+            </div>
+            <div class="service-card">
+                <h3>Scan 3D & BIM</h3>
+                <p>Numérisation laser (Lidar) pour la création de maquettes numériques conformes à l'exécution.</p>
+            </div>
+            <div class="service-card">
+                <h3>Levés Photogrammétriques</h3>
+                <p>Captation drone pour l'orthophotographie et la cartographie de précision de grandes emprises.</p>
+            </div>
+            <div class="service-card">
+                <h3>Aide à l'Implantation</h3>
+                <p>Révisions de projets et calculs d'ouvrages d'art pour une exécution sans erreur sur le terrain.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <img src="Logo_AlignAR.png" alt="AlignAR" class="footer-logo">
+        <p style="font-size: 14px; opacity: 0.6;">Rigueur Technique — Innovation Technologique — Précision Absolue</p>
+        <div class="copy">© 2026 ALIGNAR — TOUS DROITS RÉSERVÉS</div>
+    </footer>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- MOTEUR MNT TIN (Triangulated Irregular Network) ---
+        const canvas = document.getElementById('bg-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 70, 130);
+
+        // Simulation de relief topographique (MNT)
+        const size = 250;
+        const res = 50; 
+        const geometry = new THREE.PlaneGeometry(size, size, res, res);
+        
+        const vertices = geometry.attributes.position.array;
+        for (let i = 0; i < vertices.length; i += 3) {
+            const x = vertices[i];
+            const y = vertices[i + 1];
+            // Algorithme de relief type "levé de terrain"
+            vertices[i + 2] = Math.sin(x / 25) * Math.cos(y / 25) * 18 + (Math.random() * 2.5);
+        }
+        geometry.computeVertexNormals();
+
+        // Matériau Wireframe TIN (Bleu Cobalt)
+        const tinMaterial = new THREE.MeshBasicMaterial({
+            color: 0x2e7fc1,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.2
+        });
+
+        const terrain = new THREE.Mesh(geometry, tinMaterial);
+        terrain.rotation.x = -Math.PI / 2.2;
+        scene.add(terrain);
+
+        // Points de levé (Cyan Lumineux) aux intersections
+        const pMaterial = new THREE.PointsMaterial({
+            color: 0x00d4ff,
+            size: 0.9,
+            transparent: true,
+            opacity: 0.6
+        });
+        const surveyPoints = new THREE.Points(geometry, pMaterial);
+        surveyPoints.rotation.x = -Math.PI / 2.2;
+        scene.add(surveyPoints);
+
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) / 250;
+            mouseY = (e.clientY - window.innerHeight / 2) / 250;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            terrain.rotation.z += 0.0004;
+            surveyPoints.rotation.z += 0.0004;
+            
+            // Interaction fluide avec la caméra
+            camera.position.x += (mouseX * 60 - camera.position.x) * 0.03;
+            camera.position.y += (-(mouseY * 40) + 70 - camera.position.y) * 0.03;
+            camera.lookAt(0, 0, 0);
+            
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
